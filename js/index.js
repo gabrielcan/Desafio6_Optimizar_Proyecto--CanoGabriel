@@ -3,7 +3,7 @@ class Producto {
     this.id = id;
     this.nombre = nombre;
     this.valorUnidad = parseFloat(precio);
-    this.stock = cant === 0 || cant === "" ? 1 : parseInt(cant); //dejamos que por defecto ponga 1 si no obtenemos un resultado
+    this.stock = cant/* cant === 0 || cant === "" ? 1 : parseInt(cant); */ //dejamos que por defecto ponga 1 si no obtenemos un resultado
     this.categ =
       categoria === "" ||
       (categoria != "E" && categoria != "L" && categoria != "A")
@@ -11,7 +11,7 @@ class Producto {
         : categoria; //Colocamos la validacion para evitar un valor no deseado
     this.img = img === "" ? "#" : img;
     this.descrip = descrip === "" ? "Sin descripción del producto" : descrip;
-    this.activo = true; // campo que sera utilizado en próximos envios para filtrar productos que queden sin stock
+    this.activo = this.stock===0?false:true; // campo que sera utilizado en próximos envios para filtrar productos que queden sin stock
   }
   categoria = () => {
     //la funcion permite mostrar el nombre de la categoria dependiendo de la Letra que tenga en dicho campo
@@ -34,7 +34,58 @@ class ElementoCarrito {
   }
 }
 
+const ctrlStockProd=prod=>{
+ let valor=false; 
+ productos.map(item=>{
+  if(item.id===prod.producto.id&&item.stock>0){
+    valor=true
+  }
+})
 
+return valor;
+}
+
+const sumProdCarrito=prodCarr=>{
+        elementosCarrito.map(item=>{
+        if(item.producto.id===prodCarr?.producto?.id){
+            item.cantidad=item.cantidad+1;
+            }
+      })  
+
+      productos.map(valorProd=>{
+      if(valorProd.id===prodCarr?.producto?.id){
+      valorProd.stock=valorProd.stock-1;
+                    }
+      })
+     
+}
+
+const restaProdCarrito=prodCarr=>{
+  elementosCarrito.map(item=>{
+  if(item.producto.id===prodCarr.producto.id){
+      item.cantidad=item.cantidad-1;
+      }
+
+
+})  
+}
+const restCantProd=element=>{
+  productos.map(valorProd=>{
+    if(valorProd.id===element?.producto?.id){
+    valorProd.stock=valorProd.stock-1;
+    }
+          })
+
+}
+
+const sumCantProdDelete=element=>{
+  productos.map(valorProd=>{
+    if(valorProd.id===element?.producto?.id){
+    valorProd.stock=element.cantidad+valorProd.stock;
+    }
+          })
+
+}
 
 const cantProdCarritoIcono = () => {
   if (elementosCarrito.length > 0) {
@@ -64,9 +115,12 @@ const cantProdCarritoIcono = () => {
 
 /* Creamos la funcion que mostrara los productos en pantalla */
 const mostrar = () => {
-  productos.forEach((producto) => {
-    section_ProdCarrito = document.getElementById("section_ProdCarrito");
+  section_ProdCarrito.innerHTML = "";
 
+  productos.forEach((producto) => {
+    
+    if(producto.stock>0){
+  
     contProdCarrito = document.createElement("div");
     contProdCarrito.className = "card row g-0 m-1 cont_Prod_Carrito";
 
@@ -102,91 +156,61 @@ const mostrar = () => {
     carrito_btnAgregar.id= `idbtn_${producto.id}`;
 
     /* genero la accion del evento que va realizar el boton agregar de cada producto */
-    carrito_btnAgregar.onclick = () => {
+    carrito_btnAgregar.addEventListener("click",()=>{
+
       let elementoCarrito = new ElementoCarrito(producto,1);
+      let modifProd = elementosCarrito.find((item) => item.producto.id === elementoCarrito.producto.id); //verifico si el producto que estoy agregadon ya existe en el array del carrito
+     if(ctrlStockProd(elementoCarrito)){
 
-      let modifProd = elementosCarrito.find(
-        (item) => item.producto.id === elementoCarrito.producto.id
-      ); //verifico si el producto que estoy agregadon ya existe en el array del carrito
+              if(modifProd){
 
-      if (modifProd) {  
-        //al existir el producto en el array del carrito sumamos en 1 la cantidad
-           productos.map((item) => {
-            
+                 /*  usamos Alert de la librerira "sweetalert2" */
+                 Swal.fire({
+                  icon: 'info',
+                /*   title: 'MODIFICAMOS', */
+                  text: `Fue sumada una unidad mas del producto "${elementoCarrito.producto.nombre}" al CARRITO`,
+                })
 
-          if(item.id === modifProd.producto.id){
-            if(item.stock>0){
-              item.stock = item.stock - 1;
+                sumProdCarrito(modifProd)
+                localStorage.setItem("Carrito",JSON.stringify(elementosCarrito));
+                dibujarCarrito()
+                mostrar()
 
 
-              elementosCarrito.map((item) => {
-
-                if (item.producto.id === modifProd.producto.id) {
-                  
-                  item.cantidad = item.cantidad + 1;
-          /*  usamos Alert de la librerira "sweetalert2" */
-                  Swal.fire({
-                    icon: 'info',
-                  /*   title: 'MODIFICAMOS', */
-                    text: `Fue sumada una unidad mas del producto "${item.producto.nombre}" al CARRITO`,
-                  })
-
-                }
-                localStorage.setItem("Carrito",JSON.stringify(elementosCarrito)); //guardamos el elemento en el LocalStorage
-                dibujarCarrito();
-              });
-
-            }else{
-              Swal.fire({
-                icon: 'warning',
-                text: `Sin stock del producto ${item.nombre}`,
-              })
-
-            }
-          }
-      
-        });
-
-        
-      } else {
-        let elementoCarrito = new ElementoCarrito(producto, 1);
-
-        elementosCarrito.push(elementoCarrito);
-        
+              }else {
+                elementosCarrito.push(elementoCarrito);
+                
         localStorage.setItem("Carrito",JSON.stringify(elementosCarrito)); //guardamos el elemento en el carrito
+        restCantProd(elementoCarrito)
 
-        productos.map((item) => {
-
-          if (item.stock > 0) {
-          if(item.id === elementoCarrito.producto.id)
-              {item.stock = item.stock - 1
-              
-              }
-            } else {
-           
-              mostrar();
-            } 
-
-
-        });
-
-        cantProdCarritoIcono();
-/*  usamos Alert de la librerira "sweetalert2" */
+        /*  usamos Alert de la librerira "sweetalert2" */
         Swal.fire({
           icon: 'success',
           text: `Producto Agregado al CARRITO`,
         })
-        localStorage.setItem("Carrito",JSON.stringify(elementosCarrito)); //guardamos el elemento en el LocalStorage
-        dibujarCarrito();
+
+        cantProdCarritoIcono();
+        dibujarCarrito();  
+        mostrar()    
       }
-    };
+
+
+}else {
+  Swal.fire({
+    icon: 'warning',
+    text: `Sin stock del producto ${elementoCarrito.producto.nombre}`,
+  })
+  mostrar()
+}
+
+     });// FIN DEL ONCLIK
 
     carrito_precio = document.createElement("div");
     carrito_precio.className = "col-md-2 d-flex carrito__cont_cant_art";
     carrito_precio.innerHTML = `<h2>$${producto.valorUnidad}</h2>`;
 
     /* acomdamos los elemento con sus elementos padres e hijos para poder mostrarse en pantalla */
-    section_ProdCarrito.appendChild(contProdCarrito);
+    section_ProdCarrito?.append(contProdCarrito);
     contProdCarrito.append(
       carrito_Cont_img,
       prodSeccion1Carrito,
@@ -198,7 +222,8 @@ const mostrar = () => {
 
     prodSeccion1Carrito.appendChild(carrito_CardBody);
     carrito_CardBody.append(carrito_TituloProducto, carrito_descripProd);
-  });
+}
+});
 };
 
 //CARGAMOS LOS PRODUCTOS PARA MOSTRAR EN PANTALLA
@@ -290,7 +315,7 @@ const dibujarCarrito = () => {
          
             `;
 
-    contenedorCarritoCompras.append(renglonesCarrito);
+    contenedorCarritoCompras?.append(renglonesCarrito);
 
     sumaCarrito += elemento.cantidad * elemento.producto.valorUnidad;
 
@@ -303,6 +328,7 @@ const dibujarCarrito = () => {
       let nuevaCantidad = e.target.value;
       elemento.cantidad = nuevaCantidad;
       dibujarCarrito();
+      mostrar()
     });
 
     //Agregar evento a eliminar producto
@@ -312,15 +338,17 @@ const dibujarCarrito = () => {
     botonEliminarProducto.addEventListener("click", () => {
       let indiceEliminar = elementosCarrito.indexOf(elemento); //se obtiene la posicion del elemento en el array
       elementosCarrito.splice(indiceEliminar, 1); // se agrega el indice del elemento a eliminar y se indica que se borre un elemento con el número "1"
-localStorage.setItem("Carrito",JSON.stringify(elementosCarrito))
+     
+      sumCantProdDelete(elemento);
+      localStorage.setItem("Carrito",JSON.stringify(elementosCarrito))
 
       dibujarCarrito(); // volvemos a crear el carrito
       cantProdCarritoIcono();
+      mostrar()
      
     });
   });
 
-  //contenedorCarritoCompras.innerHTML = renglonesCarrito;
 
   if (elementosCarrito.length == 0) {
     contenedorFooterCarrito.innerHTML = `
@@ -344,12 +372,12 @@ if(arrayLocalStorage){
   elementosCarrito=JSON.parse(arrayLocalStorage);
 }
 
+const section_ProdCarrito = document.querySelector("#section_ProdCarrito");
 const contenedorCarritoCompras = document.querySelector("#items");
 const contenedorFooterCarrito = document.querySelector("#footer");
 const estandarDolaresAmericanos = Intl.NumberFormat("en-US");
 let categProducto;
 let nombreProducto;
-let section_ProdCarrito;
 let contProdCarrito;
 let carrito_Cont_img;
 let contImgCarrito;
@@ -417,6 +445,7 @@ modalBtnComprar.addEventListener("click", () => {
   localStorage.clear(); // al generarse la compra borramos el elemento del local stor
     dibujarCarrito();
     cantProdCarritoIcono();
+    mostrar()
   } else {
     //Mostramos alerta dando aviso que no tiene productos en el carrito
     modalAlertSinProduct.setAttribute(
